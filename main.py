@@ -49,9 +49,6 @@ class Particle:
         self.draw()
 
 def applyGravity(particleList):
-    for particle in particleList:
-        particle.acc = pygame.math.Vector2(0, 0)
-
     for i, particle1 in enumerate(particleList):
         for j, particle2 in enumerate(particleList):
             if i != j:
@@ -87,15 +84,31 @@ def elasticCollisions(particleList):
                         particle1.velocity -= (2 * m2 * speed / (m1 + m2)) * direction
                         particle2.velocity += (2 * m1 * speed / (m1 + m2)) * direction
 
+def spring(p1, p2, dist):
+    direction =  p1.pos - p2.pos
+    distance = direction.length()
+
+    if distance < dist:
+        p1.acc = pygame.math.Vector2(-direction, 10)
+        p2.acc = pygame.math.Vector2(direction, 10)
+    elif distance > dist:
+        p1.acc = pygame.math.Vector2(-direction, 10)
+        p2.acc = pygame.math.Vector2(direction, 10)
+
 p1 = Particle(screen, [25, 100], (255, 255, 255), 10, 1000)
 p2 = Particle(screen, [1000, 70], (255, 0, 0), 10, 1000)
 p3 = Particle(screen, [25, 700], (0, 255, 0), 10, 1000)
 particles = [p1, p2, p3]
 
 while running:
+
+    for particle in particles:
+        particle.acc = pygame.math.Vector2(0, 0)
+
     screen.fill((30, 30, 30))
     # applyGravity(particles)
-    applyDownGravity(particles)
+    # applyDownGravity(particles)
+    spring(p1, p2, 100)
     elasticCollisions(particles)
     for p in particles:
         p.update(width, height)
