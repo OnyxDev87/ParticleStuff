@@ -13,7 +13,7 @@ clock = pygame.time.Clock()
 
 delta_time = 0.1
 G = 1000
-gravity_force = 500
+gravity_force = 50000
 
 class Particle:
     def __init__(self, surface, pos, color, radius, mass):
@@ -31,16 +31,16 @@ class Particle:
     def wallCollisions(self, width, height):
         if self.pos.x > width - self.radius:
             self.pos.x = width - self.radius
-            self.velocity.x *= -1
+            self.velocity.x *= -1 * 0.5
         elif self.pos.x < 0 + self.radius:
             self.pos.x = 0 + self.radius
-            self.velocity.x *= -1
+            self.velocity.x *= -1 * 0.5
         if self.pos.y > height - self.radius:
             self.pos.y = height - self.radius
-            self.velocity.y *= -1
+            self.velocity.y *= -1 * 0.5
         elif self.pos.y < 0 + self.radius:
             self.pos.y = 0 + self.radius
-            self.velocity.y *= -1
+            self.velocity.y *= -1 * 0.5
 
     def update(self, width, height):
         self.velocity += self.acc * delta_time
@@ -86,19 +86,24 @@ def elasticCollisions(particleList):
 
 def spring(p1, p2, dist):
     direction =  p1.pos - p2.pos
-    distance = direction.length()
+    midpoint = (p1.pos + p2.pos) / 2
+    direction = direction.normalize()
+    direction *= (dist / 2)
+    goalP1 = midpoint + direction
+    goalP2 = midpoint - direction
 
-    if distance < dist:
-        p1.acc = pygame.math.Vector2(-direction, 10)
-        p2.acc = pygame.math.Vector2(direction, 10)
-    elif distance > dist:
-        p1.acc = pygame.math.Vector2(-direction, 10)
-        p2.acc = pygame.math.Vector2(direction, 10)
+    p1.pos = goalP1
+    p2.pos = goalP2
 
-p1 = Particle(screen, [25, 100], (255, 255, 255), 10, 1000)
+    pygame.draw.line(screen, (255, 255, 255), p1.pos, p2.pos, 3)
+
+p1 = Particle(screen, [25, 100], (0, 0, 255), 10, 1000)
 p2 = Particle(screen, [1000, 70], (255, 0, 0), 10, 1000)
 p3 = Particle(screen, [25, 700], (0, 255, 0), 10, 1000)
-particles = [p1, p2, p3]
+p4 = Particle(screen, [250, 700], (255, 255, 0), 10, 1000)
+particles = [p1, p2, p3, p4]
+p1.velocity = pygame.math.Vector2(90, 100)
+p1.velocity = pygame.math.Vector2(271, 100)
 
 while running:
 
@@ -107,8 +112,13 @@ while running:
 
     screen.fill((30, 30, 30))
     # applyGravity(particles)
-    # applyDownGravity(particles)
+    applyDownGravity(particles)
     spring(p1, p2, 100)
+    spring(p2, p3, 100)
+    spring(p3, p4, 100)
+    spring(p4, p1, 100)
+    spring(p2, p4, 150)
+    spring(p1, p3, 150)
     elasticCollisions(particles)
     for p in particles:
         p.update(width, height)
