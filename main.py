@@ -13,6 +13,7 @@ clock = pygame.time.Clock()
 
 delta_time = 0.1
 G = 1000
+gravity_force = 500
 
 class Particle:
     def __init__(self, surface, pos, color, radius, mass):
@@ -64,10 +65,7 @@ def applyGravity(particleList):
 
 def applyDownGravity(particleList):
     for particle in particleList:
-        particle.acc = pygame.math.Vector2(0, 0)
-    
-    for particle in particleList:
-        
+        particle.acc.y += gravity_force / particle.mass
 
 def elasticCollisions(particleList):
     for i, particle1 in enumerate(particleList):
@@ -97,6 +95,7 @@ particles = [p1, p2, p3]
 while running:
     screen.fill((30, 30, 30))
     # applyGravity(particles)
+    applyDownGravity(particles)
     elasticCollisions(particles)
     for p in particles:
         p.update(width, height)
