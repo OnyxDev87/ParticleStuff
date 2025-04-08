@@ -119,7 +119,7 @@ while running:
     spring(p4, p1, 100)
     spring(p2, p4, 150)
     spring(p1, p3, 150)
-    elasticCollisions(particles)
+    # elasticCollisions(particles)
     for p in particles:
         p.update(width, height)
 
