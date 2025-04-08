@@ -3,132 +3,89 @@ import math
 
 pygame.init()
 
-width = 1080
-height = 720
+w, h = 1080, 720
+scr = pygame.display.set_mode((w, h))
+r, c, s = True, pygame.time.Clock(), 0.1
+G, gf = 1000, 50000
 
-screen = pygame.display.set_mode((width, height))
-
-running = True
-clock = pygame.time.Clock()
-
-delta_time = 0.1
-G = 1000
-gravity_force = 50000
-
-class Particle:
-    def __init__(self, surface, pos, color, radius, mass):
-        self.surface = surface
-        self.pos = pygame.math.Vector2(pos)
-        self.color = color
-        self.radius = radius
-        self.mass = mass
-        self.velocity = pygame.math.Vector2(0, 0)
-        self.acc = pygame.math.Vector2(0, 0)
+class P:
+    def __init__(self, scr, p, cl, r, m):
+        self.s, self.p, self.cl, self.r, self.m = scr, pygame.math.Vector2(p), cl, r, m
+        self.v, self.a = pygame.math.Vector2(0, 0), pygame.math.Vector2(0, 0)
     
-    def draw(self):
-        pygame.draw.circle(self.surface, self.color, (int(self.pos.x), int(self.pos.y)), self.radius)
+    def d(self): pygame.draw.circle(self.s, self.cl, (int(self.p.x), int(self.p.y)), self.r)
 
-    def wallCollisions(self, width, height):
-        if self.pos.x > width - self.radius:
-            self.pos.x = width - self.radius
-            self.velocity.x *= -1 * 0.5
-        elif self.pos.x < 0 + self.radius:
-            self.pos.x = 0 + self.radius
-            self.velocity.x *= -1 * 0.5
-        if self.pos.y > height - self.radius:
-            self.pos.y = height - self.radius
-            self.velocity.y *= -1 * 0.5
-        elif self.pos.y < 0 + self.radius:
-            self.pos.y = 0 + self.radius
-            self.velocity.y *= -1 * 0.5
+    def wc(self):
+        if self.p.x > w - self.r: self.p.x, self.v.x = w - self.r, -self.v.x * 0.5
+        elif self.p.x < 0 + self.r: self.p.x, self.v.x = 0 + self.r, -self.v.x * 0.5
+        if self.p.y > h - self.r: self.p.y, self.v.y = h - self.r, -self.v.y * 0.5
+        elif self.p.y < 0 + self.r: self.p.y, self.v.y = 0 + self.r, -self.v.y * 0.5
 
-    def update(self, width, height):
-        self.velocity += self.acc * delta_time
-        self.pos += self.velocity * delta_time
-        self.wallCollisions(width, height)
-        self.draw()
+    def u(self):
+        self.v += self.a * s
+        self.p += self.v * s
+        self.wc()
+        self.d()
 
-def applyGravity(particleList):
-    for i, particle1 in enumerate(particleList):
-        for j, particle2 in enumerate(particleList):
+def ag(pL):
+    for i, p1 in enumerate(pL):
+        for j, p2 in enumerate(pL):
             if i != j:
-                direction = particle2.pos - particle1.pos
-                distance = direction.length()
+                d = p2.p - p1.p
+                di = d.length()
+                if di > p1.r + p2.r:
+                    f = G * (p1.m * p2.m) / (di ** 2)
+                    a = (d.normalize() * f) / p1.m
+                    p1.a += a
 
-                if distance > particle1.radius + particle2.radius:
-                    force = G * (particle1.mass * particle2.mass) / (distance ** 2)
-                    acceleration = (direction.normalize() * force) / particle1.mass
-                    particle1.acc += acceleration
+def adg(pL): 
+    for p in pL: p.a.y += gf / p.m
 
-def applyDownGravity(particleList):
-    for particle in particleList:
-        particle.acc.y += gravity_force / particle.mass
-
-def elasticCollisions(particleList):
-    for i, particle1 in enumerate(particleList):
-        for j, particle2 in enumerate(particleList):
+def ec(pL):
+    for i, p1 in enumerate(pL):
+        for j, p2 in enumerate(pL):
             if i < j:
-                direction = particle2.pos - particle1.pos
-                distance = direction.length()
+                d = p2.p - p1.p
+                di = d.length()
+                if di < p1.r + p2.r:
+                    d.normalize_ip()
+                    v = p1.v - p2.v
+                    sp = v.dot(d)
+                    if sp > 0:
+                        m1, m2 = p1.m, p2.m
+                        p1.v -= (2 * m2 * sp / (m1 + m2)) * d
+                        p2.v += (2 * m1 * sp / (m1 + m2)) * d
 
-                if distance < particle1.radius + particle2.radius:
-                    direction.normalize_ip()
+def sp(p1, p2, dist):
+    d = p1.p - p2.p
+    mp = (p1.p + p2.p) / 2
+    d = d.normalize() * (dist / 2)
+    p1.p, p2.p = mp + d, mp - d
+    pygame.draw.line(scr, (255, 255, 255), p1.p, p2.p, 3)
 
-                    velocity_diff = particle1.velocity - particle2.velocity
-                    speed = velocity_diff.dot(direction)
+p1, p2, p3, p4 = P(scr, [25, 100], (0, 0, 255), 10, 1000), P(scr, [1000, 70], (255, 0, 0), 10, 1000), P(scr, [25, 700], (0, 255, 0), 10, 1000), P(scr, [250, 700], (255, 255, 0), 10, 1000)
+p1.v, p2.v = pygame.math.Vector2(90, 100), pygame.math.Vector2(271, 100)
+pl = [p1, p2, p3, p4]
 
-                    if speed > 0:
-                        m1 = particle1.mass
-                        m2 = particle2.mass
+while r:
+    for p in pl: p.a = pygame.math.Vector2(0, 0)
+    scr.fill((30, 30, 30))
+    adg(pl)
+    sp(p1, p2, 100)
+    sp(p2, p3, 100)
+    sp(p3, p4, 100)
+    sp(p4, p1, 100)
+    sp(p2, p4, 150)
+    sp(p1, p3, 150)
+    ec(pl)
+    for p in pl: p.u()
 
-                        particle1.velocity -= (2 * m2 * speed / (m1 + m2)) * direction
-                        particle2.velocity += (2 * m1 * speed / (m1 + m2)) * direction
-
-def spring(p1, p2, dist):
-    direction =  p1.pos - p2.pos
-    midpoint = (p1.pos + p2.pos) / 2
-    direction = direction.normalize()
-    direction *= (dist / 2)
-    goalP1 = midpoint + direction
-    goalP2 = midpoint - direction
-
-    p1.pos = goalP1
-    p2.pos = goalP2
-
-    pygame.draw.line(screen, (255, 255, 255), p1.pos, p2.pos, 3)
-
-p1 = Particle(screen, [25, 100], (0, 0, 255), 10, 1000)
-p2 = Particle(screen, [1000, 70], (255, 0, 0), 10, 1000)
-p3 = Particle(screen, [25, 700], (0, 255, 0), 10, 1000)
-p4 = Particle(screen, [250, 700], (255, 255, 0), 10, 1000)
-particles = [p1, p2, p3, p4]
-p1.velocity = pygame.math.Vector2(90, 100)
-p1.velocity = pygame.math.Vector2(271, 100)
-
-while running:
-
-    for particle in particles:
-        particle.acc = pygame.math.Vector2(0, 0)
-
-    screen.fill((30, 30, 30))
-    # applyGravity(particles)
-    applyDownGravity(particles)
-    spring(p1, p2, 100)
-    spring(p2, p3, 100)
-    spring(p3, p4, 100)
-    spring(p4, p1, 100)
-    spring(p2, p4, 150)
-    spring(p1, p3, 150)
-    elasticCollisions(particles)
-    for p in particles:
-        p.update(width, height)
-
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
+    for e in pygame.event.get():
+        if e.type == pygame.QUIT: r = False
 
     pygame.display.flip()
-    delta_time = clock.tick(60) / 1000
-    delta_time = max(0.001, min(0.1, delta_time))
+    s = c.tick(60) / 1000
+    s = max(0.001, min(0.1, s))
 
 pygame.quit()
+
