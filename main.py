@@ -1,5 +1,3 @@
-# AVERAGE THE DISTANCE CONTRAINTS AND SECANT BEFORE YOU APPLY THEM
-
 import pygame
 import math
 
@@ -21,7 +19,8 @@ dampening = 0.95
 circle_center = pygame.math.Vector2(540, 360)
 num_particles = 25
 particle_dist = 15
-particles = []
+particles1 = []
+particles2 = []
 scale  = 1
 circle_radius = math.floor(((num_particles*particle_dist)/2)/math.pi)
 expected_area = math.pi * (circle_radius ** 2)
@@ -133,9 +132,10 @@ def createSoftBody(particles, circle_center, particle_dist, num_particles):
         particle = Particle(screen, [x, y], (255, 255, 255), 10, 10)
         particles.append(particle)
 
-createSoftBody(particles, circle_center, particle_dist, num_particles)
+createSoftBody(particles1, pygame.math.Vector2(300, 360), 15, 25)
+createSoftBody(particles2, pygame.math.Vector2(300, 360), 15, 25)
 
-for p in particles:
+for p in particles1:
     p.acc = pygame.math.Vector2(1000, 1000)
 
 while running:
@@ -145,7 +145,7 @@ while running:
     mouse_vector = pygame.math.Vector2(mouse_pos)
 
     if mousePressed:
-        for p in particles:
+        for p in particles1:
             distance = p.pos.distance_to(mouse_vector)
             if distance < 25:
                 strength = (100 - distance) / 100
@@ -154,13 +154,13 @@ while running:
 
     screen.fill((30, 30, 30))
 
-    applyDownGravity(particles)
+    applyDownGravity(particles1)
 
-    applySprings(particles, particle_dist, iterations=8)
-    for i in range(10):
-        applyInflation(particles, expected_area)
+    applySprings(particles1, particle_dist, iterations=8)
+    for i in range(15):
+        applyInflation(particles1, expected_area)
 
-    for p in particles:
+    for p in particles1:
         p.update(width, height)
         p.acc = pygame.math.Vector2(0, 0)
 
