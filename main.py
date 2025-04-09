@@ -1,3 +1,5 @@
+# AVERAGE THE DISTANCE CONTRAINTS AND SECANT BEFORE YOU APPLY THEM
+
 import pygame
 import math
 
@@ -14,7 +16,17 @@ clock = pygame.time.Clock()
 delta_time = 0.1
 G = 1000
 gravity_force = 500
-dampening = 0.99
+dampening = 0.95
+
+circle_center = pygame.math.Vector2(540, 360)
+num_particles = 25
+particle_dist = 15
+particles = []
+scale  = 1
+circle_radius = math.floor(((num_particles*particle_dist)/2)/math.pi)
+expected_area = math.pi * (circle_radius ** 2)
+
+mousePressed = pygame.mouse.get_pressed()[0]
 
 class Particle:
     def __init__(self, surface, pos, color, radius, mass):
@@ -48,15 +60,12 @@ class Particle:
             self.prev_pos.y = self.pos.y + (self.pos.y - self.prev_pos.y)
 
     def update(self, width, height):
-        new_pos = (2 * self.pos - self.prev_pos + (self.acc* (delta_time**2)))
+        velocity = (self.pos - self.prev_pos) * dampening
+        new_pos = self.pos + velocity + self.acc * (delta_time ** 2)
         self.prev_pos = self.pos
         self.pos = new_pos
-
-        # print((self.pos - self.prev_pos) / delta_time)
-
         self.wallCollisions(width, height)
-
-        self.draw()
+        # self.draw()
 
 
 def applyGravity(particleList):
@@ -91,36 +100,66 @@ def spring(p1, p2, dist):
 
         pygame.draw.line(screen, (255, 255, 255), p1.pos, p2.pos, 3)
 
-circle_center = pygame.math.Vector2(540, 360)  # Center of the screen
-circle_radius = 100  # Radius of the circle
+def applySprings(particles, rest_length, iterations=5):
+    for _ in range(iterations):
+        for i in range(len(particles)):
+            p1 = particles[i]
+            p2 = particles[(i + 1) % len(particles)]
+            spring(p1, p2, rest_length)
 
-# Create 8 particles in a circle
-particles = []
-num_particles = 8
-for i in range(num_particles):
-    angle = (2 * math.pi / num_particles) * i  # Angle for each particle
-    x = circle_center.x + circle_radius * math.cos(angle)
-    y = circle_center.y + circle_radius * math.sin(angle)
-    particle = Particle(screen, [x, y], (255, 255, 255), 10, 10)
-    particles.append(particle)
+def computePolygonArea(particles):
+    area = 0
+    n = len(particles)
+    for i in range(n):
+        j = (i + 1) % n
+        area += (particles[i].pos.x * particles[j].pos.y) - (particles[j].pos.x * particles[i].pos.y)
+    return abs(area) / 2
 
-# Example: Apply gravity and springs between adjacent particles
-for i in range(len(particles)):
-    particles[i].acc = pygame.math.Vector2(0, 100)  # Example acceleration
+def applyInflation(particles, expected_area, inflation_strength=0.0001):
+    current_area = computePolygonArea(particles)
+    area_diff = expected_area - current_area
+    if abs(area_diff) < 1:
+        return
+    centroid = sum((p.pos for p in particles), pygame.math.Vector2(0, 0)) / len(particles)
+    for p in particles:
+        direction = (p.pos - centroid).normalize()
+        p.pos += direction * area_diff * inflation_strength
+
+def createSoftBody(particles, circle_center, particle_dist, num_particles):
+    for i in range(num_particles):
+        angle = (2 * math.pi / num_particles) * i
+        x = circle_center.x + particle_dist * math.cos(angle)
+        y = circle_center.y + particle_dist * math.sin(angle)
+        particle = Particle(screen, [x, y], (255, 255, 255), 10, 10)
+        particles.append(particle)
+
+createSoftBody(particles, circle_center, particle_dist, num_particles)
 
 while running:
 
+    mousePressed = pygame.mouse.get_pressed()[0]
+    mouse_pos = pygame.mouse.get_pos()
+    mouse_vector = pygame.math.Vector2(mouse_pos)
+
+    if mousePressed:
+        for p in particles:
+            distance = p.pos.distance_to(mouse_vector)
+            if distance < 25:
+                strength = (100 - distance) / 100
+                direction = (p.pos - mouse_vector)
+                p.acc += direction * strength * 2000
+
     screen.fill((30, 30, 30))
+
     applyDownGravity(particles)
-    for particle in particles:
-        if i < len(particles) - 1:
-            spring(particles[i], particles[i + 1], 100)
+
+    applySprings(particles, particle_dist, iterations=8)
+    for i in range(10):
+        applyInflation(particles, expected_area)
 
     for p in particles:
         p.update(width, height)
-
-    for particle in particles:
-        particle.acc = pygame.math.Vector2(0, 0)
+        p.acc = pygame.math.Vector2(0, 0)
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
