@@ -15,7 +15,7 @@ clock = pygame.time.Clock()
 
 delta_time = 0.1
 G = 1000
-gravity_force = 500
+gravity_force = 1000
 dampening = 0.95
 
 circle_center = pygame.math.Vector2(540, 360)
@@ -135,6 +135,9 @@ def createSoftBody(particles, circle_center, particle_dist, num_particles):
 
 createSoftBody(particles, circle_center, particle_dist, num_particles)
 
+for p in particles:
+    p.acc = pygame.math.Vector2(1000, 1000)
+
 while running:
 
     mousePressed = pygame.mouse.get_pressed()[0]
@@ -147,7 +150,7 @@ while running:
             if distance < 25:
                 strength = (100 - distance) / 100
                 direction = (p.pos - mouse_vector)
-                p.acc += direction * strength * 2000
+                p.acc += direction * strength * 4000
 
     screen.fill((30, 30, 30))
 
