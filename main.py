@@ -150,7 +150,7 @@ while running:
             if distance < 25:
                 strength = (100 - distance) / 100
                 direction = (p.pos - mouse_vector)
-                p.acc += direction * strength * 4000
+                p.pos += direction# * strength * 4000
 
     screen.fill((30, 30, 30))
 
