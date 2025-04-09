@@ -13,7 +13,7 @@ clock = pygame.time.Clock()
 
 delta_time = 0.1
 G = 1000
-gravity_force = 0.5
+gravity_force = 500
 dampening = 0.99
 
 class Particle:
@@ -31,22 +31,28 @@ class Particle:
 
     def wallCollisions(self, width, height):
         if self.pos.x > width - self.radius:
+            # right wall
             self.pos.x = width - self.radius
-            self.prev_pos.x = self.pos.y + (self.pos.y - self.prev_pos.y) * dampening
+            self.prev_pos.x = self.pos.x + (self.pos.x - self.prev_pos.x)
         elif self.pos.x < self.radius:
+            # left wall
             self.pos.x = self.radius
-            self.prev_pos.x = self.pos.y + (self.pos.y - self.prev_pos.y) * dampening
+            self.prev_pos.x = self.pos.x + (self.pos.x - self.prev_pos.x)
         if self.pos.y > height - self.radius:
+            # ground
             self.pos.y = height - self.radius
-            self.prev_pos.y = self.pos.y + (self.pos.y - self.prev_pos.y) * dampening
+            self.prev_pos.y = self.pos.y + (self.pos.y - self.prev_pos.y)
         elif self.pos.y < self.radius:
+            # top
             self.pos.y = self.radius
-            self.prev_pos.y = self.pos.y + (self.pos.y - self.prev_pos.y) * dampening
+            self.prev_pos.y = self.pos.y + (self.pos.y - self.prev_pos.y)
 
     def update(self, width, height):
-        new_pos = 2 * self.pos - self.prev_pos + self.acc
+        new_pos = (2 * self.pos - self.prev_pos + (self.acc* (delta_time**2)))
         self.prev_pos = self.pos
         self.pos = new_pos
+
+        # print((self.pos - self.prev_pos) / delta_time)
 
         self.wallCollisions(width, height)
 
@@ -85,18 +91,29 @@ def spring(p1, p2, dist):
 
         pygame.draw.line(screen, (255, 255, 255), p1.pos, p2.pos, 3)
 
+circle_center = pygame.math.Vector2(540, 360)  # Center of the screen
+circle_radius = 100  # Radius of the circle
 
+# Create 8 particles in a circle
+particles = []
+num_particles = 8
+for i in range(num_particles):
+    angle = (2 * math.pi / num_particles) * i  # Angle for each particle
+    x = circle_center.x + circle_radius * math.cos(angle)
+    y = circle_center.y + circle_radius * math.sin(angle)
+    particle = Particle(screen, [x, y], (255, 255, 255), 10, 10)
+    particles.append(particle)
 
-p1 = Particle(screen, [525, 100], (0, 0, 255), 10, 10)
-p2 = Particle(screen, [575, 100], (255, 0, 0), 10, 10)
-particles = [p1, p2]
-p1.acc = pygame.math.Vector2(-10, 10)
+# Example: Apply gravity and springs between adjacent particles
+for i in range(len(particles)):
+    particles[i].acc = pygame.math.Vector2(0, 100)  # Example acceleration
 
 while running:
 
     screen.fill((30, 30, 30))
     applyDownGravity(particles)
-    spring(p1, p2, 50)
+    for particle in particles:
+        spring(particles[i], particles[(i + 1) % len(particles)], circle_radius)
 
     for p in particles:
         p.update(width, height)
