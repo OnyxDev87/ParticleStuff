@@ -113,7 +113,8 @@ while running:
     screen.fill((30, 30, 30))
     applyDownGravity(particles)
     for particle in particles:
-        spring(particles[i], particles[(i + 1) % len(particles)], circle_radius)
+        if i < len(particles) - 1:
+            spring(particles[i], particles[i + 1], 100)
 
     for p in particles:
         p.update(width, height)
