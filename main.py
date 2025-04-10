@@ -97,8 +97,6 @@ def spring(p1, p2, dist):
         p1.pos = goalP1
         p2.pos = goalP2
 
-        pygame.draw.line(screen, (255, 255, 255), p1.pos, p2.pos, 3)
-
 def applySprings(particles, rest_length, iterations=5):
     for _ in range(iterations):
         for i in range(len(particles)):
@@ -160,9 +158,10 @@ while running:
     for i in range(15):
         applyInflation(particles1, expected_area)
 
-    for p in particles1:
-        p.update(width, height)
-        p.acc = pygame.math.Vector2(0, 0)
+    for i in range(len(particles1)):
+        particles1[i].update(width, height)
+        particles1[i].acc = pygame.math.Vector2(0, 0)
+        pygame.draw.line(screen, (255, 255, 255), particles1[i].pos, particles1[(i + 1) % len(particles1)].pos, 3)
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
