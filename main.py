@@ -1,5 +1,7 @@
 import pygame
 import math
+import numpy as np
+import random
 
 pygame.init()
 
@@ -14,7 +16,7 @@ clock = pygame.time.Clock()
 delta_time = 0.1
 G = 1000
 gravity_force = 1000
-dampening = 0.95
+dampening = 0.98
 
 circle_center = pygame.math.Vector2(540, 360)
 num_particles = 25
@@ -26,6 +28,11 @@ circle_radius = math.floor(((num_particles*particle_dist)/2)/math.pi)
 expected_area = math.pi * (circle_radius ** 2)
 
 mousePressed = pygame.mouse.get_pressed()[0]
+grabbed_particle = None
+grab_radius = 50
+
+collision_circle_radius = 30
+
 
 class Particle:
     def __init__(self, surface, pos, color, radius, mass):
@@ -65,7 +72,6 @@ class Particle:
         self.pos = new_pos
         self.wallCollisions(width, height)
         # self.draw()
-
 
 def applyGravity(particleList):
     for i, particle1 in enumerate(particleList):
@@ -130,6 +136,51 @@ def createSoftBody(particles, circle_center, particle_dist, num_particles):
         particle = Particle(screen, [x, y], (255, 255, 255), 10, 10)
         particles.append(particle)
 
+def cubicSpline(pts):
+    N = len(pts)
+    z = np.array([[p.pos.x, p.pos.y] for p in pts])
+    n = N
+
+    # Create a periodic tridiagonal system
+    A = np.zeros((n, n))
+    np.fill_diagonal(A, 4)
+    np.fill_diagonal(A[1:], 1)
+    np.fill_diagonal(A[:, 1:], 1)
+    A[0, -1] = 1
+    A[-1, 0] = 1
+
+    # Compute r
+    r = np.zeros((n, 2))
+    for i in range(n):
+        r[i] = 3 * (z[(i + 1) % n] - z[(i - 1) % n])
+
+    # Solve for derivatives
+    w = np.linalg.solve(A, r)
+
+    # Draw the spline
+    for i in range(n):
+        a = z[i]
+        b = w[i]
+        c = 3 * (z[(i + 1) % n] - z[i]) - 2 * w[i] - w[(i + 1) % n]
+        d = 2 * (z[i] - z[(i + 1) % n]) + w[i] + w[(i + 1) % n]
+
+        for t in np.linspace(0, 1, 20):
+            point = a + b * t + c * (t ** 2) + d * (t ** 3)
+            pygame.draw.circle(screen, (255, 255, 255), point.astype(int), 2)
+
+def collide_with_circle(particles, circle_center, circle_radius):
+    for p in particles:
+        to_particle = p.pos - circle_center
+        distance = to_particle.length()
+        if distance < circle_radius + p.radius:
+            if distance != 0:
+                normal = to_particle.normalize()
+            else:
+                normal = pygame.math.Vector2(1, 0)
+
+            overlap = (circle_radius + p.radius) - distance
+            p.pos += normal * overlap
+
 createSoftBody(particles1, pygame.math.Vector2(300, 360), 15, 25)
 createSoftBody(particles2, pygame.math.Vector2(300, 360), 15, 25)
 
@@ -138,19 +189,35 @@ for p in particles1:
 
 while running:
 
+    screen.fill((30, 30, 30))
+
     mousePressed = pygame.mouse.get_pressed()[0]
     mouse_pos = pygame.mouse.get_pos()
     mouse_vector = pygame.math.Vector2(mouse_pos)
 
-    if mousePressed:
-        for p in particles1:
-            distance = p.pos.distance_to(mouse_vector)
-            if distance < 25:
-                strength = (100 - distance) / 100
-                direction = (p.pos - mouse_vector)
-                p.pos += direction# * strength * 4000
+    mousePressedNow = pygame.mouse.get_pressed()[0]
+    mouse_pos = pygame.mouse.get_pos()
+    mouse_vector = pygame.math.Vector2(mouse_pos)
 
-    screen.fill((30, 30, 30))
+    if mousePressedNow and grabbed_particle is None:
+        for p in particles1:
+            if p.pos.distance_to(mouse_vector) < grab_radius:
+                grabbed_particle = p
+                break
+
+    if mousePressedNow and grabbed_particle:
+        grabbed_particle.pos = mouse_vector
+        grabbed_particle.prev_pos = mouse_vector
+
+    if not mousePressedNow:
+        grabbed_particle = None
+
+    keys = pygame.key.get_pressed()
+    space_pressed = pygame.mouse.get_pressed()[2]
+
+    if space_pressed:
+        pygame.draw.circle(screen, (200, 100, 100), (int(mouse_vector.x), int(mouse_vector.y)), collision_circle_radius)
+        collide_with_circle(particles1, mouse_vector, collision_circle_radius)
 
     applyDownGravity(particles1)
 
@@ -161,7 +228,9 @@ while running:
     for i in range(len(particles1)):
         particles1[i].update(width, height)
         particles1[i].acc = pygame.math.Vector2(0, 0)
-        pygame.draw.line(screen, (255, 255, 255), particles1[i].pos, particles1[(i + 1) % len(particles1)].pos, 3)
+        # pygame.draw.line(screen, (255, 255, 255), particles1[i].pos, particles1[(i + 1) % len(particles1)].pos, 3)
+        
+    cubicSpline(particles1)
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
